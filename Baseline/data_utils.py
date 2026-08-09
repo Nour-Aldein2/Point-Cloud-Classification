@@ -35,8 +35,8 @@ class RandomNoise:
         self.sigma = sigma
 
     def __call__(self, point_cloud):
-        noise = np.random.uniform(-self.sigma, self.sigma, point_cloud.shape)
-
+        # noise = np.random.uniform(-self.sigma, self.sigma, point_cloud.shape)   # uniform jitter (symmetric)
+        noise = np.random.uniform(0, self.sigma, point_cloud.shape)   # Gaussian jitter
         return point_cloud + noise
 
 
