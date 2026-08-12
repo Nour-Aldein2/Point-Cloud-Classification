@@ -17,7 +17,7 @@ def one_epoch(model, optimizer, loss_fcn, train_loader, val_loader, device):
     train_correct = 0
     train_samples = 0
     model.train()
-    for batch in tqdm(train_loader, desc="Training"):
+    for batch in tqdm(train_loader, desc="Training", ncols=80, leave=False):
         points = batch["point_cloud"].to(device)
         labels = batch["category"].to(device)
 
@@ -45,7 +45,7 @@ def one_epoch(model, optimizer, loss_fcn, train_loader, val_loader, device):
 
     model.eval()
     with torch.inference_mode():
-        for batch in tqdm(val_loader, desc="Validating"):
+        for batch in tqdm(val_loader, desc="Validating", ncols=80, leave=False):
             points = batch["point_cloud"].to(device)
             labels = batch["category"].to(device)
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
         if val_loss < best_val_loss:
             es_counter = 0
-            print(f"✅ New best model found val_loss={val_loss:.4f} (prev ={best_val_loss:.4f})")
+            print(f" ✅ New best model found val_loss={val_loss:.4f} (prev ={best_val_loss:.4f})")
             best_val_loss = val_loss
 
             torch.save(

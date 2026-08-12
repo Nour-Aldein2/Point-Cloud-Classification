@@ -50,3 +50,4 @@ class Config:
 ## TODO: Rotation should be done along different axes not only z!
 ## TODO: Consider reflection!
 ## TODO: Develop voxelisation
+# TODO: Try using other GNN layers other than EdgeConv

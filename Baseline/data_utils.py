@@ -60,7 +60,7 @@ class PointCloudData(Dataset):
         self.transforms = transform if transform is not None else self.default_transforms()
 
         self.files = []
-        for category_path in tqdm(folders, desc=f"Preparing dataset for {split_name} split"):
+        for category_path in tqdm(folders, desc=f"Preparing dataset for {split_name} split", ncols=80, leave=False):
             data_path = category_path/split_name
             for obj_path in sorted(data_path.glob("*.off")):
                 sample = {
