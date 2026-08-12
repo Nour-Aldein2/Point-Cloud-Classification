@@ -6,7 +6,7 @@ import torch
 
 @dataclass
 class DataConfig:
-    path: str | Path = Path("/Users/nour/Downloads/ModelNet10/")
+    path: str | Path = Path("/Users/nour/Downloads/ModelNet10_3_splits/")
 
     num_points: int = 2048
     noise_sigma: float = 0.02
@@ -51,3 +51,4 @@ class Config:
 ## TODO: Consider reflection!
 ## TODO: Develop voxelisation
 # TODO: Try using other GNN layers other than EdgeConv
+## TODO: Update the figures for the data splits (to include the validation split since it is not there in the notebook)
