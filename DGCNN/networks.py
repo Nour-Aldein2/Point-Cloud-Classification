@@ -8,7 +8,7 @@ from torch_geometric.nn import EdgeConv, knn_graph, global_mean_pool, global_max
 from Classification_ModelNet10.DGCNN.config import Config
 
 
-class MLP(nn.Module):
+class MLP(nn.Module, Config):
     """
     MLP used by EdgeConv.
 
@@ -22,7 +22,7 @@ class MLP(nn.Module):
         super().__init__()
         self.mlp = nn.Sequential(
             nn.Linear(in_channels*2, out_channels, bias=False),
-            nn.BatchNorm1d(out_channels),
+            nn.BatchNorm1d(out_channels, momentum=self.architecture.batch_norm_momentum),
             nn.LeakyReLU(slope)
         )
 
@@ -48,7 +48,7 @@ class DGCNN(nn.Module, Config):
 
         self.point_embedding = nn.Sequential(
             nn.Linear(sum(mlp_dims), cfg.embedding_dim, bias=False),
-            nn.BatchNorm1d(cfg.embedding_dim),
+            nn.BatchNorm1d(cfg.embedding_dim, momentum=cfg.batch_norm_momentum),
             nn.LeakyReLU(cfg.leaky_relu_slope)
         )
 
