@@ -11,11 +11,22 @@ import torch
 class Data:
     num_points: int = 2048   # Number of points sampled in the shape
     k: int = 40   # Number of nearest neighbours to a point
+    num_classes: int = 10
 
 
 @dataclass
 class Architecture:
-    pass
+    mlp_out_dim_1: int = 64
+    mlp_out_dim_2: int = 64
+    mlp_out_dim_3: int = 128
+    mlp_out_dim_4: int = 256
+
+    leaky_relu_slope: float = 0.2
+    dropout_rate: float = 0.5
+
+    fc_out_dim: int = 1024
+    classifier_hidden1: int = 512
+    classifier_hidden2: int = 256
 
 
 @dataclass
