@@ -3,6 +3,7 @@
 ## TODO: Check how to measure the time for a forward pass
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Sequence
 
 import torch
 
@@ -16,17 +17,15 @@ class Data:
 
 @dataclass
 class Architecture:
-    mlp_out_dim_1: int = 64
-    mlp_out_dim_2: int = 64
-    mlp_out_dim_3: int = 128
-    mlp_out_dim_4: int = 256
+    edge_channels: Sequence[int] = (64, 64, 128, 256)
+    embedding_dim: int = 1024
+    classifier_dims: Sequence[int] = (512, 256)
+
+    agg_fcn: "str" = "max"
+    self_loop: bool = True
 
     leaky_relu_slope: float = 0.2
     dropout_rate: float = 0.5
-
-    fc_out_dim: int = 1024
-    classifier_hidden1: int = 512
-    classifier_hidden2: int = 256
 
 
 @dataclass
