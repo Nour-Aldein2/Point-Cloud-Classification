@@ -13,7 +13,7 @@ class DataConfig:
     seed: int = 11
 
     batch_size: int = 64
-    num_workers: int = 4
+    num_workers: int = 0
     pin_memory: bool = True
 
 
@@ -29,6 +29,8 @@ class Model:
 
     dropout_rate: float = 0.3
 
+
+@dataclass
 class Training:
     epochs: int = 1000
     es_patience: int = 50
