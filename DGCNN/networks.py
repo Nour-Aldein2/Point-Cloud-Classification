@@ -5,7 +5,7 @@ from torch import nn, Tensor
 from torch_geometric.nn import EdgeConv, knn_graph, global_mean_pool, global_max_pool
 # IMPORTANT: You could achieve the implementation using DynamicEdgeConv instead of using both EdgeConv, knn_graph
 
-from Classification_ModelNet10.DGCNN.config import Config
+from config import Config
 
 
 class MLP(nn.Module, Config):
