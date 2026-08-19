@@ -8,7 +8,7 @@ from torch_geometric.nn import EdgeConv, knn_graph, global_mean_pool, global_max
 from config import Config
 
 
-class MLP(nn.Module, Config):
+class MLP(nn.Module):
     """
     MLP used by EdgeConv.
 
@@ -19,8 +19,10 @@ class MLP(nn.Module, Config):
     edge representation with 2 * F channels.
     """
     def __init__(self, in_channels, out_channels, slope):
-        nn.Module.__init__(self)
-        Config.__init__(self)
+        super().__init__()
+        _config = Config()
+        self.architecture = _config.architecture
+
         self.mlp = nn.Sequential(
             nn.Linear(in_channels*2, out_channels, bias=False),
             nn.BatchNorm1d(out_channels, momentum=self.architecture.batch_norm_momentum),
@@ -31,10 +33,13 @@ class MLP(nn.Module, Config):
         return self.mlp(x)
 
 
-class DGCNN(nn.Module, Config):
+class DGCNN(nn.Module):
     def __init__(self):
-        nn.Module.__init__(self)
-        Config.__init__(self)
+        super().__init__()
+        _config = Config()
+
+        self.architecture = _config.architecture
+        self.data = _config.data
         cfg = self.architecture
         mlp_dims = cfg.edge_channels
 
