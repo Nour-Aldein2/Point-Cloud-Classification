@@ -32,7 +32,8 @@ class MLP(nn.Module, Config):
 
 class DGCNN(nn.Module, Config):
     def __init__(self):
-        super().__init__()
+        nn.Module.__init__(self)
+        Config.__init__(self)
         cfg = self.architecture
         mlp_dims = cfg.edge_channels
 
