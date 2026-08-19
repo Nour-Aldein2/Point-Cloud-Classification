@@ -19,7 +19,8 @@ class MLP(nn.Module, Config):
     edge representation with 2 * F channels.
     """
     def __init__(self, in_channels, out_channels, slope):
-        super().__init__()
+        nn.Module.__init__(self)
+        Config.__init__(self)
         self.mlp = nn.Sequential(
             nn.Linear(in_channels*2, out_channels, bias=False),
             nn.BatchNorm1d(out_channels, momentum=self.architecture.batch_norm_momentum),
