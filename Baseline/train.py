@@ -75,9 +75,9 @@ if __name__ == "__main__":
                                    num_points=cfg.data.num_points,
                                    split_name="train",
                                    seed=cfg.data.seed)
-    test_dataset = PointCloudData(root_dir=cfg.data.path,
+    val_dataset = PointCloudData(root_dir=cfg.data.path,
                                   num_points=cfg.data.num_points,
-                                  split_name="test",
+                                  split_name="val",
                                   seed=cfg.data.seed)
 
     train_loader = DataLoader(
@@ -88,8 +88,8 @@ if __name__ == "__main__":
         pin_memory=cfg.data.pin_memory,
     )
 
-    test_loader = DataLoader(
-        test_dataset,
+    val_loader = DataLoader(
+        val_dataset,
         batch_size=cfg.data.batch_size,
         shuffle=False,
         num_workers=cfg.data.num_workers,
@@ -112,7 +112,7 @@ if __name__ == "__main__":
             optimizer=optimizer,
             loss_fcn=criterion,
             train_loader=train_loader,
-            val_loader=test_loader,
+            val_loader=val_loader,
             device=device,
         )
 
