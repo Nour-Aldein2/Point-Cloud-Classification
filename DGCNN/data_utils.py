@@ -6,9 +6,11 @@ import trimesh
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms, utils
+from torchvision import transforms
+from torch_geometric.data import Data
 
 from tqdm import tqdm
+
 
 class Normalize:
     def __call__(self, point_cloud):
@@ -34,8 +36,7 @@ class RandomNoise:
         self.sigma = sigma
 
     def __call__(self, point_cloud):
-        # noise = np.random.uniform(-self.sigma, self.sigma, point_cloud.shape)   # uniform jitter (symmetric)
-        noise = np.random.uniform(0, self.sigma, point_cloud.shape)   # Gaussian jitter
+        noise = np.random.uniform(-self.sigma, self.sigma, point_cloud.shape)   # uniform jitter (symmetric)
         return point_cloud + noise
 
 
@@ -47,7 +48,14 @@ class ToTensor:
 
 
 class PointCloudData(Dataset):
-    def __init__(self, root_dir: Path, num_points: int, split_name: str = "train", transform: Callable | None = None, sigma: float = 0.02, seed: int = 42):
+    def __init__(self,
+                 root_dir: Path,
+                 num_points: int,
+                 split_name: str = "train",
+                 transform: Callable | None = None,
+                 sigma: float = 0.02,
+                 seed: int = 42):
+        print(f"🚚🚚🚚... Preparing data in {root_dir}")
         self.root_dir = root_dir
         folders = [d for d in sorted(root_dir.iterdir()) if d.is_dir()]
         self.classes = {f.stem: i for i, f in enumerate(folders)}
@@ -117,7 +125,7 @@ class PointCloudData(Dataset):
 
         label = torch.tensor(self.classes[category], dtype=torch.long)
 
-        return {
-            "point_cloud": point_cloud,
-            "category": label,
-        }
+        return Data(
+            pos=point_cloud,
+            y=torch.tensor([label], dtype=torch.long),
+        )
