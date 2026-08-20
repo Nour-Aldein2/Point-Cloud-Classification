@@ -11,8 +11,8 @@ import torch
 @dataclass
 class Data:
     root_dir: str | Path = Path("/Users/nour/Downloads/ModelNet10_3_splits/")
-    num_points: int = 2048   # Number of points sampled in the shape
-    k: int = 40   # Number of nearest neighbours to a point
+    num_points: int = 1024   # Number of points sampled in the shape
+    k: int = 20   # Number of nearest neighbours to a point
     num_classes: int = 10
 
     noise_sigma: float = 0.02
@@ -47,8 +47,8 @@ class Train:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     optimizer = torch.optim.SGD
-    lr_initial: float = 0.1
-    lr_final: float = 0.001
+    lr_initial: float = 0.01
+    lr_final: float = 0.0001
     momentum: float = 0.9
     weigh_decay: float = 1e-4
 
