@@ -295,3 +295,213 @@ histories = {
         },
     },
 }
+
+
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+
+# ------------------------------------------------------------------
+# Plot settings
+# ------------------------------------------------------------------
+
+TRAIN_COLOUR = "#2b6e72"
+VAL_COLOUR = "#75bcc1"
+BEST_COLOUR = "#2b6e72"
+
+plt.rcParams.update({
+    "font.size": 10,
+    "axes.titlesize": 14,
+    "axes.labelsize": 10,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "legend.fontsize": 10,
+})
+
+
+# ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+
+def experiment_title(name):
+    """
+    Convert:
+        exp_2048_20
+
+    into:
+        Experiment: 2048 Nodes, 20 Neighbours.
+    """
+    _, nodes, neighbours = name.split("_")
+
+    return f"Experiment: {nodes} Nodes, {neighbours} Neighbours"
+
+
+def plot_history(
+    name,
+    history,
+    metric,
+    output_dir,
+):
+    """
+    Plot either loss or accuracy for one experiment.
+    """
+
+    epochs = history["epoch"]
+
+    train_values = history[f"train_{metric}"]
+    val_values = history[f"val_{metric}"]
+
+    # The checkpoint selected during training was based on validation loss.
+    best_epoch = history["metadata"]["best_val_loss_epoch"]
+
+    if metric == "loss":
+        ylabel = "Loss"
+        filename_metric = "loss"
+
+    elif metric == "acc":
+        ylabel = "Accuracy (%)"
+        filename_metric = "accuracy"
+
+    else:
+        raise ValueError("metric must be 'loss' or 'acc'")
+
+    # --------------------------------------------------------------
+    # Figure
+    # --------------------------------------------------------------
+
+    fig, ax = plt.subplots(
+        figsize=(7.2, 4.2),
+        dpi=160,
+        constrained_layout=True,
+    )
+
+    # Training
+    ax.plot(
+        epochs,
+        train_values,
+        color=TRAIN_COLOUR,
+        linewidth=1.8,
+        label="Training",
+    )
+
+    # Validation
+    ax.plot(
+        epochs,
+        val_values,
+        color=VAL_COLOUR,
+        linewidth=1.8,
+        label="Validation",
+    )
+
+    # --------------------------------------------------------------
+    # Best model
+    # --------------------------------------------------------------
+
+    ax.axvline(
+        best_epoch,
+        color=BEST_COLOUR,
+        linestyle="--",
+        linewidth=1.2,
+        alpha=0.85,
+    )
+
+    ax.text(
+        best_epoch,
+        0.6,
+        "Best model",
+        transform=ax.get_xaxis_transform(),
+        rotation=90,
+        ha="right",
+        va="top",
+        color=BEST_COLOUR,
+        fontsize=10,
+    )
+
+    # --------------------------------------------------------------
+    # Labels / styling
+    # --------------------------------------------------------------
+
+    ax.set_title(experiment_title(name))
+
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel(ylabel)
+
+    ax.grid(
+        axis="y",
+        linewidth=0.7,
+        alpha=0.18,
+    )
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    ax.legend(
+        frameon=False,
+        # loc="upper right",
+    )
+
+    ax.margins(x=0.01)
+
+    # --------------------------------------------------------------
+    # Save
+    # --------------------------------------------------------------
+
+    svg_path = output_dir / f"{name}_{filename_metric}.svg"
+    png_path = output_dir / f"{name}_{filename_metric}.png"
+
+    # SVG is preferable for the webpage.
+    fig.savefig(
+        svg_path,
+        bbox_inches="tight",
+        transparent=True,
+    )
+
+    # PNG fallback.
+    fig.savefig(
+        png_path,
+        dpi=200,
+        bbox_inches="tight",
+        transparent=True,
+    )
+
+    plt.close(fig)
+
+
+def plot_all_histories(histories, output_dir="plots"):
+    """
+    Generate separate loss and accuracy plots for every experiment.
+    """
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for name, history in histories.items():
+
+        # Loss
+        plot_history(
+            name=name,
+            history=history,
+            metric="loss",
+            output_dir=output_dir,
+        )
+
+        # Accuracy
+        plot_history(
+            name=name,
+            history=history,
+            metric="acc",
+            output_dir=output_dir,
+        )
+
+
+# ------------------------------------------------------------------
+# Generate plots
+# ------------------------------------------------------------------
+
+if __name__ == "__main__":
+
+    plot_all_histories(
+        histories,
+        output_dir="../../Figures",
+    )
+
