@@ -1,5 +1,12 @@
+"""
+To run this file, use something like
+```
+python -m DGCNN.results.evaluate --ckpt DGCNN/checkpoints/best_model_512_10.pt --split test 2>&1 | tee evaluate.log
+```
+"""
 import argparse
 from pathlib import Path
+import sys
 
 import torch
 from torch import Tensor
@@ -10,6 +17,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from tqdm import tqdm
+
+## -- Fix [Register DGCNN.config as "config" before importing networks.py because networks.py uses "from config import Config".]
+from .. import config as config_module
+sys.modules["config"] = config_module
+# -- End Fix
 
 from ..config import Config
 from ..networks import DGCNN
@@ -62,8 +74,10 @@ def make_confusion_matrix(y_true: Tensor,
                           y_pred: Tensor,
                           labels: list,
                           target_names: list,
-                          colours: tuple[str, str] = ("#2b6e72", "#75bcc1"),
-                          save_path: str | Path = "../../Figures"):  # -- End Fix
+                          colours: tuple[str, ...] = ("#ffffff", "#e9f0f0", "#d4e2e2", "#bfd3d4", "#aac5c6", "#95b6b8",
+                                                       "#7fa8aa", "#6a999c", "#558b8e", "#407c80", "#2b6e72"),
+                          save_path: str | Path = "../../Figures",
+                          filename: str | None = None):
     y_true = y_true.detach().cpu().numpy()
     y_pred = y_pred.detach().cpu().numpy()
 
@@ -81,7 +95,7 @@ def make_confusion_matrix(y_true: Tensor,
     # --- Plotting ---
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Custom colormap from your two colours
+    # Custom colormap from light to dark
     cmap = LinearSegmentedColormap.from_list("custom_cmap", colours)
 
     im = ax.imshow(matrix_norm, interpolation='nearest', cmap=cmap, vmin=0, vmax=1)
@@ -91,31 +105,38 @@ def make_confusion_matrix(y_true: Tensor,
     cbar.ax.set_ylabel('Recall', rotation=-90, va="bottom", fontsize=11)
 
     # Ticks & labels
+    target_names = [name.replace("_", " ").title() for name in target_names]
+
     ax.set(
         xticks=np.arange(len(labels)),
         yticks=np.arange(len(labels)),
-        ## -- Fix [Display class names on the axes while retaining numeric IDs for the confusion-matrix calculation.]
         xticklabels=target_names,
         yticklabels=target_names,
-        # -- End Fix
         xlabel="Predicted Label",
         ylabel="True Label",
     )
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
-    # Annotate cells with count (raw) and proportion
+    # Annotate cells with recall percentage and raw count
     thresh = matrix_norm.max() / 2.
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             norm_val = matrix_norm[i, j]
             raw_val = matrix[i, j]
-            text = f"{raw_val}\n({norm_val:.2f})"
-            ax.text(j, i, text,
+            text_colour = "white" if norm_val > thresh else "black"
+
+            ax.text(j, i - 0.12, f"{norm_val:.2f}",
                     ha="center", va="center",
-                    color="white" if norm_val > thresh else "black",
+                    color=text_colour,
                     fontsize=9)
 
-    ax.set_title("Confusion Matrix", fontsize=14, pad=15)
+            ax.text(j, i + 0.18, f"({raw_val})",
+                    ha="center", va="center",
+                    color=text_colour,
+                    fontsize=8,
+                    alpha=0.6)
+
+    ax.set_title(f"Confusion Matrix (Exp. {filename.split('_')[2]} Nodes)", fontsize=14, pad=15)
     fig.tight_layout()
 
     # --- Save ---
@@ -123,9 +144,10 @@ def make_confusion_matrix(y_true: Tensor,
     save_dir.mkdir(parents=True, exist_ok=True)
 
     # Auto-generate filename with timestamp to avoid overwriting
-    from datetime import datetime
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    filename = f"confusion_matrix_{timestamp}.png"
+    if filename is None:
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        filename = f"confusion_matrix_{timestamp}.png"
     filepath = save_dir / filename
 
     fig.savefig(filepath, dpi=300, bbox_inches='tight', facecolor='white')
@@ -183,4 +205,5 @@ if __name__ == "__main__":
                           y_pred,
                           labels,
                           target_names,
-                          save_path="../../Figures")
+                          save_path="./Figures",
+                          filename="confusion_matrix_"+checkpoint_path.name.split("_")[2])
