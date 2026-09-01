@@ -59,6 +59,7 @@ class PointCloudData(Dataset):
         self.root_dir = root_dir
         folders = [d for d in sorted(root_dir.iterdir()) if d.is_dir()]
         self.classes = {f.stem: i for i, f in enumerate(folders)}
+        print(self.classes, folders)
         self.num_points = num_points
         self.split_name = split_name
         self.sigma = sigma
