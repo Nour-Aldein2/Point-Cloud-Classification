@@ -305,9 +305,11 @@ import matplotlib.pyplot as plt
 # Plot settings
 # ------------------------------------------------------------------
 
-TRAIN_COLOUR = "#2b6e72"
-VAL_COLOUR = "#75bcc1"
-BEST_COLOUR = "#2b6e72"
+LOSS_COLOUR = "#ab3d66"
+ACC_COLOUR = "#73b0c9"
+BEST_COLOUR = "#7f6f8c"
+
+TRAIN_ALPHA = 0.5
 
 plt.rcParams.update({
     "font.size": 10,
@@ -315,7 +317,7 @@ plt.rcParams.update({
     "axes.labelsize": 10,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "legend.fontsize": 10,
+    "legend.fontsize": 8,
 })
 
 
@@ -339,77 +341,98 @@ def experiment_title(name):
 def plot_history(
     name,
     history,
-    metric,
     output_dir,
 ):
     """
-    Plot either loss or accuracy for one experiment.
+    Plot loss and accuracy together for one experiment.
     """
 
     epochs = history["epoch"]
 
-    train_values = history[f"train_{metric}"]
-    val_values = history[f"val_{metric}"]
+    train_loss = history["train_loss"]
+    val_loss = history["val_loss"]
+
+    train_acc = history["train_acc"]
+    val_acc = history["val_acc"]
 
     # The checkpoint selected during training was based on validation loss.
     best_epoch = history["metadata"]["best_val_loss_epoch"]
-
-    if metric == "loss":
-        ylabel = "Loss"
-        filename_metric = "loss"
-
-    elif metric == "acc":
-        ylabel = "Accuracy (%)"
-        filename_metric = "accuracy"
-
-    else:
-        raise ValueError("metric must be 'loss' or 'acc'")
 
     # --------------------------------------------------------------
     # Figure
     # --------------------------------------------------------------
 
-    fig, ax = plt.subplots(
+    fig, loss_ax = plt.subplots(
         figsize=(7.2, 4.2),
         dpi=160,
         constrained_layout=True,
     )
 
+    acc_ax = loss_ax.twinx()
+
+    # --------------------------------------------------------------
+    # Loss
+    # --------------------------------------------------------------
+
     # Training
-    ax.plot(
+    loss_ax.plot(
         epochs,
-        train_values,
-        color=TRAIN_COLOUR,
+        train_loss,
+        color=LOSS_COLOUR,
         linewidth=1.8,
-        label="Training",
+        alpha=TRAIN_ALPHA,
+        label="Train loss",
     )
 
     # Validation
-    ax.plot(
+    loss_ax.plot(
         epochs,
-        val_values,
-        color=VAL_COLOUR,
+        val_loss,
+        color=LOSS_COLOUR,
         linewidth=1.8,
-        label="Validation",
+        label="Val loss",
+    )
+
+    # --------------------------------------------------------------
+    # Accuracy
+    # --------------------------------------------------------------
+
+    # Training
+    acc_ax.plot(
+        epochs,
+        train_acc,
+        color=ACC_COLOUR,
+        linewidth=1.8,
+        alpha=TRAIN_ALPHA,
+        label="Train accuracy",
+    )
+
+    # Validation
+    acc_ax.plot(
+        epochs,
+        val_acc,
+        color=ACC_COLOUR,
+        linewidth=1.8,
+        label="Val accuracy",
     )
 
     # --------------------------------------------------------------
     # Best model
     # --------------------------------------------------------------
 
-    ax.axvline(
+    loss_ax.axvline(
         best_epoch,
         color=BEST_COLOUR,
-        linestyle="--",
+        linestyle="-.",
         linewidth=1.2,
-        alpha=0.85,
+        alpha=0.15,
     )
 
-    ax.text(
+    loss_ax.text(
         best_epoch,
         0.6,
         "Best model",
-        transform=ax.get_xaxis_transform(),
+        transform=loss_ax.get_xaxis_transform(),
         rotation=90,
         ha="right",
         va="top",
@@ -421,33 +444,64 @@ def plot_history(
     # Labels / styling
     # --------------------------------------------------------------
 
-    ax.set_title(experiment_title(name))
+    loss_ax.set_title(experiment_title(name))
 
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel(ylabel)
+    loss_ax.set_xlabel("Epoch")
 
-    ax.grid(
+    loss_ax.set_ylabel(
+        "Loss",
+        color=LOSS_COLOUR,
+    )
+
+    acc_ax.set_ylabel(
+        "Accuracy (%)",
+        color=ACC_COLOUR,
+    )
+
+    loss_ax.tick_params(
+        axis="y",
+        colors=LOSS_COLOUR,
+    )
+
+    acc_ax.tick_params(
+        axis="y",
+        colors=ACC_COLOUR,
+    )
+
+    loss_ax.grid(
         axis="y",
         linewidth=0.7,
         alpha=0.18,
     )
 
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+    loss_ax.spines["top"].set_visible(False)
+    loss_ax.spines["right"].set_visible(False)
+    loss_ax.spines["left"].set_color(LOSS_COLOUR)
 
-    ax.legend(
+    # acc_ax.spines["top"].set_visible(False)
+    acc_ax.spines["left"].set_visible(False)
+    acc_ax.spines["bottom"].set_visible(False)
+    acc_ax.spines["right"].set_color(ACC_COLOUR)
+
+    # Combine entries from both axes into one legend.
+    loss_handles, loss_labels = loss_ax.get_legend_handles_labels()
+    acc_handles, acc_labels = acc_ax.get_legend_handles_labels()
+
+    loss_ax.legend(
+        loss_handles + acc_handles,
+        loss_labels + acc_labels,
         frameon=False,
-        # loc="upper right",
+        loc="center right",
     )
 
-    ax.margins(x=0.01)
+    loss_ax.margins(x=0.01)
 
     # --------------------------------------------------------------
     # Save
     # --------------------------------------------------------------
 
-    svg_path = output_dir / f"{name}_{filename_metric}.svg"
-    png_path = output_dir / f"{name}_{filename_metric}.png"
+    svg_path = output_dir / f"{name}_loss_accuracy.svg"
+    png_path = output_dir / f"{name}_loss_accuracy.png"
 
     # SVG is preferable for the webpage.
     fig.savefig(
@@ -469,7 +523,7 @@ def plot_history(
 
 def plot_all_histories(histories, output_dir="plots"):
     """
-    Generate separate loss and accuracy plots for every experiment.
+    Generate one combined loss and accuracy plot for every experiment.
     """
 
     output_dir = Path(output_dir)
@@ -477,19 +531,9 @@ def plot_all_histories(histories, output_dir="plots"):
 
     for name, history in histories.items():
 
-        # Loss
         plot_history(
             name=name,
             history=history,
-            metric="loss",
-            output_dir=output_dir,
-        )
-
-        # Accuracy
-        plot_history(
-            name=name,
-            history=history,
-            metric="acc",
             output_dir=output_dir,
         )
 
@@ -504,4 +548,3 @@ if __name__ == "__main__":
         histories,
         output_dir="../../Figures",
     )
-
