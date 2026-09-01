@@ -3,11 +3,13 @@ from pathlib import Path
 
 import torch
 from torch import Tensor
-from torch.utils.data import DataLoader
+from torch_geometric.loader import DataLoader
+
 from sklearn.metrics import classification_report, confusion_matrix
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from tqdm import tqdm
 
 from ..config import Config
 from ..networks import DGCNN
@@ -15,7 +17,7 @@ from ..data_utils import PointCloudData
 
 
 def load_trained_model(checkpoint_path: str | Path):
-    hist_dict = torch.load(checkpoint_path, weights_only=False, map_location="cpu")
+    hist_dict = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
     model_state_dict = hist_dict["model_state_dict"]
 
     model = DGCNN()
@@ -37,14 +39,19 @@ def prepare_data(cfg: Config, split_name: str):
         num_workers=cfg.data.num_workers,
         pin_memory=cfg.data.pin_memory,
     )
-    return loader
+    return loader, dataset.classes
 
 
-def compute_scores(y_true: Tensor, y_pred: Tensor, labels: list):
+def compute_scores(y_true: Tensor, y_pred: Tensor, labels: list, target_names: list):
     y_true = y_true.detach().cpu().numpy()
     y_pred = y_pred.detach().cpu().numpy()
 
-    report = classification_report(y_true, y_pred, labels=labels)
+    report = classification_report(y_true,
+                                   y_pred,
+                                   labels=labels,
+                                   target_names=target_names,
+                                   zero_division=0)
+
     print("="*50)
     print(f"Classification Report:\n{report}\n")
     print("=" * 50)
@@ -54,15 +61,22 @@ def compute_scores(y_true: Tensor, y_pred: Tensor, labels: list):
 def make_confusion_matrix(y_true: Tensor,
                           y_pred: Tensor,
                           labels: list,
-                          colours: list = ["#2b6e72", "#75bcc1"],
-                          save_path: str | Path = "../../Figures"):
+                          target_names: list,
+                          colours: tuple[str, str] = ("#2b6e72", "#75bcc1"),
+                          save_path: str | Path = "../../Figures"):  # -- End Fix
     y_true = y_true.detach().cpu().numpy()
     y_pred = y_pred.detach().cpu().numpy()
 
     matrix = confusion_matrix(y_true, y_pred, labels=labels)
 
     # Normalize per row (recall per class)
-    matrix_norm = matrix.astype('float') / matrix.sum(axis=1)[:, np.newaxis]
+    row_sums = matrix.sum(axis=1, keepdims=True)
+    matrix_norm = np.divide(
+        matrix.astype('float'),
+        row_sums,
+        out=np.zeros_like(matrix, dtype=float),
+        where=row_sums != 0,
+    )
 
     # --- Plotting ---
     fig, ax = plt.subplots(figsize=(10, 8))
@@ -80,8 +94,10 @@ def make_confusion_matrix(y_true: Tensor,
     ax.set(
         xticks=np.arange(len(labels)),
         yticks=np.arange(len(labels)),
-        xticklabels=labels,
-        yticklabels=labels,
+        ## -- Fix [Display class names on the axes while retaining numeric IDs for the confusion-matrix calculation.]
+        xticklabels=target_names,
+        yticklabels=target_names,
+        # -- End Fix
         xlabel="Predicted Label",
         ylabel="True Label",
     )
@@ -108,7 +124,7 @@ def make_confusion_matrix(y_true: Tensor,
 
     # Auto-generate filename with timestamp to avoid overwriting
     from datetime import datetime
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filename = f"confusion_matrix_{timestamp}.png"
     filepath = save_dir / filename
 
@@ -119,17 +135,52 @@ def make_confusion_matrix(y_true: Tensor,
     return matrix
 
 
-
-
 if __name__ == "__main__":
-    print("🚨 Important: Remember to use `| 2&>1  tee evaluate.log to store the logs")   ## TODO: Is there a way to automate that?
-    checkpoint_path = argparse.ArgumentParser("--ckpt", description="Path to where the checkpoint was saved.", argument_default="")
-    split_name = argparse.ArgumentParser("--split", description="The split you wish to evaluate the model on.")
+    print("🚨 Important: Remember to use `2>&1 | tee evaluate.log` to store the logs")
+
+    parser = argparse.ArgumentParser(description="Evaluate a trained DGCNN checkpoint.")
+    parser.add_argument("--ckpt", type=Path, required=True,
+                        help="Path to where the checkpoint was saved.")
+    parser.add_argument("--split", required=True, help="The split you wish to evaluate the model on.")
+    args = parser.parse_args()
+    checkpoint_path = args.ckpt
+    split_name = args.split
 
     cfg = Config()
     model = load_trained_model(checkpoint_path)
-    loader = prepare_data(cfg, split_name)
+    loader, classes = prepare_data(cfg, split_name)
 
     model = model.to(cfg.train.device)
 
+    results = {"y_true": [], "y_pred": []}
+    with torch.inference_mode():
+        model.eval()
+        for batch in tqdm(loader, desc=f"Evaluating {split_name} split", ncols=80, leave=False, colour="#5d9781"):
+            batch = batch.to(cfg.train.device)
 
+            points = batch.pos
+            batch_idx = batch.batch
+            y_true = batch.y.view(-1)
+
+            logits = model(points, batch_idx)
+            y_pred = logits.argmax(dim=1)
+
+            results["y_true"].append(y_true.detach().cpu())
+            results["y_pred"].append(y_pred.detach().cpu())
+
+    if not results["y_true"]:
+        raise ValueError(f"No samples found in the {split_name!r} split.")
+
+    y_true = torch.cat(results["y_true"], dim=0)
+    y_pred = torch.cat(results["y_pred"], dim=0)
+
+    class_items = sorted(classes.items(), key=lambda item: item[1])
+    labels = [class_id for _, class_id in class_items]
+    target_names = [class_name for class_name, _ in class_items]
+
+    compute_scores(y_true, y_pred, labels, target_names)
+    make_confusion_matrix(y_true,
+                          y_pred,
+                          labels,
+                          target_names,
+                          save_path="../../Figures")
