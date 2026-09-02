@@ -20,6 +20,11 @@ from config import Config
 from model import PointNetBaseline
 from data_utils import PointCloudData
 
+PALETTES = {
+    "house_scape": ["#5d9781", "#ab3d66", "#73b0c9", "#7f6f8c", "#cad8c9",
+                    "#2b6e72", "#75bcc1", "#d6a65c", "#b86b4b", "#566b8f"],
+}
+
 
 def load_trained_model(checkpoint_path: str | Path, cfg: Config):
     hist_dict = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
@@ -42,7 +47,7 @@ def prepare_data(cfg: Config, split_name: str):
         batch_size=cfg.data.batch_size,
         shuffle=False,
         num_workers=cfg.data.num_workers,
-        pin_memory=cfg.data.pin_memory,
+        pin_memory=torch.cuda.is_available(),
     )
     return loader, dataset.classes
 
@@ -107,26 +112,34 @@ def make_feature_plot(projection,
                       labels,
                       classes: dict,
                       method: str,
+                      colours: tuple[str, ...] = tuple(PALETTES["house_scape"]),
                       save_path: str | Path = "./Figures",
                       filename: str | None = None):
     fig, ax = plt.subplots(figsize=(10, 8))
 
     class_items = sorted(classes.items(), key=lambda item: item[1])
-    for class_name, class_id in class_items:
+
+    if len(class_items) > len(colours):
+        raise ValueError(f"Not enough colours for {len(class_items)} classes.")
+
+    for i, (class_name, class_id) in enumerate(class_items):
         mask = labels == class_id
+
         ax.scatter(projection[mask, 0],
                    projection[mask, 1],
-                   s=24,
-                   alpha=0.75,
+                   s=64,
+                   alpha=0.60,
+                   color=colours[i],
                    label=class_name.replace("_", " ").title())
 
     method_name = method.upper() if method == "umap" else "t-SNE"
-    ax.set(
-        xlabel=f"{method_name} 1",
-        ylabel=f"{method_name} 2",
-    )
-    ax.set_title(f"Learned Feature Space ({method_name})", fontsize=14, pad=15)
-    ax.legend(title="Class", bbox_to_anchor=(1.02, 1), loc="upper left")
+
+    # Remove spines, axes, ticks, and tick labels
+    ax.set_axis_off()
+
+    ax.set_title(f"Learned Feature Space ({method_name}) -- Baseline", fontsize=14, pad=10)
+    ax.legend(title="Class", bbox_to_anchor=(1.02, 1), loc="upper left", frameon=False)
+
     fig.tight_layout()
 
     save_dir = Path(save_path)
@@ -153,6 +166,7 @@ if __name__ == "__main__":
     parser.add_argument("--method", choices=("tsne", "umap"), default="tsne",
                         help="Dimensionality reduction method.")
     args = parser.parse_args()
+
     checkpoint_path = args.ckpt
     split_name = args.split
     method = args.method
