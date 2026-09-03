@@ -1,12 +1,14 @@
 """
 To run this file, use something like
 ```
-python -m DGCNN.results.evaluate --ckpt DGCNN/checkpoints/best_model_512_10.pt --split test 2>&1 | tee evaluate.log
+python -m DGCNN.results.evaluate --ckpt DGCNN/checkpoints/best_model_512_10.pt --split test 2>&1 | tee evaluate_512.log
 ```
 """
 import argparse
+from datetime import datetime
 from pathlib import Path
 import sys
+from typing import Literal
 
 import torch
 from torch import Tensor
@@ -15,7 +17,7 @@ from torch_geometric.loader import DataLoader
 from sklearn.metrics import classification_report, confusion_matrix
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 from tqdm import tqdm
 
 ## -- Fix [Register DGCNN.config as "config" before importing networks.py because networks.py uses "from config import Config".]
@@ -75,7 +77,9 @@ def make_confusion_matrix(y_true: Tensor,
                           labels: list,
                           target_names: list,
                           colours: tuple[str, ...] = ("#ffffff", "#e9f0f0", "#d4e2e2", "#bfd3d4", "#aac5c6", "#95b6b8",
-                                                       "#7fa8aa", "#6a999c", "#558b8e", "#407c80", "#2b6e72"),
+                                                      "#7fa8aa", "#6a999c", "#558b8e", "#407c80", "#2b6e72"),
+                          style: Literal["heatmap", "scatter"] = "heatmap",
+                          colour_map: Literal["existing", "red"] = "existing",
                           save_path: str | Path = "../../Figures",
                           filename: str | None = None):
     y_true = y_true.detach().cpu().numpy()
@@ -85,72 +89,105 @@ def make_confusion_matrix(y_true: Tensor,
 
     # Normalize per row (recall per class)
     row_sums = matrix.sum(axis=1, keepdims=True)
-    matrix_norm = np.divide(
-        matrix.astype('float'),
-        row_sums,
-        out=np.zeros_like(matrix, dtype=float),
-        where=row_sums != 0,
-    )
+    matrix_norm = np.divide(matrix.astype(float), row_sums, out=np.zeros_like(matrix, dtype=float), where=row_sums != 0)
 
-    # --- Plotting ---
-    fig, ax = plt.subplots(figsize=(10, 8))
+    # Colour map
+    if colour_map == "existing":
+        cmap = LinearSegmentedColormap.from_list("existing_cmap", colours, N=256)
+    elif colour_map == "red":
+        full_red = LinearSegmentedColormap.from_list("full_red", ["#F8D4D0", "#B2182B"], N=256)
+        red_colours = full_red(np.linspace(0.0, 0.60, 256))
+        cmap = LinearSegmentedColormap.from_list("reduced_red", red_colours, N=256)
+    else:
+        raise ValueError("colour_map must be 'existing' or 'red'.")
 
-    # Custom colormap from light to dark
-    cmap = LinearSegmentedColormap.from_list("custom_cmap", colours)
-
-    im = ax.imshow(matrix_norm, interpolation='nearest', cmap=cmap, vmin=0, vmax=1)
-
-    # Colorbar
-    cbar = ax.figure.colorbar(im, ax=ax, shrink=0.75)
-    cbar.ax.set_ylabel('Recall', rotation=-90, va="bottom", fontsize=11)
-
-    # Ticks & labels
+    norm = Normalize(vmin=0.0, vmax=1.0)
     target_names = [name.replace("_", " ").title() for name in target_names]
 
-    ax.set(
-        xticks=np.arange(len(labels)),
-        yticks=np.arange(len(labels)),
-        xticklabels=target_names,
-        yticklabels=target_names,
-        xlabel="Predicted Label",
-        ylabel="True Label",
-    )
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Annotate cells with recall percentage and raw count
-    thresh = matrix_norm.max() / 2.
-    for i in range(matrix.shape[0]):
-        for j in range(matrix.shape[1]):
-            norm_val = matrix_norm[i, j]
-            raw_val = matrix[i, j]
-            text_colour = "white" if norm_val > thresh else "black"
+    if style == "heatmap":
+        im = ax.imshow(matrix_norm, interpolation="nearest", cmap=cmap, norm=norm)
 
-            ax.text(j, i - 0.12, f"{norm_val:.2f}",
-                    ha="center", va="center",
-                    color=text_colour,
-                    fontsize=9)
+        cbar = fig.colorbar(im, ax=ax, shrink=0.75)
+        cbar.ax.set_ylabel("Recall", rotation=-90, va="bottom", fontsize=11)
 
-            ax.text(j, i + 0.18, f"({raw_val})",
-                    ha="center", va="center",
-                    color=text_colour,
-                    fontsize=8,
-                    alpha=0.6)
+        thresh = matrix_norm.max() / 2.0
 
-    ax.set_title(f"Confusion Matrix (Exp. {filename.split('_')[2]} Nodes)", fontsize=14, pad=15)
+        for i in range(matrix.shape[0]):
+            for j in range(matrix.shape[1]):
+                norm_val = matrix_norm[i, j]
+                raw_val = matrix[i, j]
+                text_colour = "white" if norm_val > thresh else "black"
+
+                ax.text(j, i - 0.12, f"{norm_val:.2f}", ha="center", va="center", color=text_colour, fontsize=9)
+                ax.text(j, i + 0.18, f"({raw_val})", ha="center", va="center", color=text_colour, fontsize=8, alpha=0.6)
+
+        x_rotation = 45
+        x_alignment = "right"
+
+    elif style == "scatter":
+        n_classes = len(labels)
+        idx = np.arange(n_classes)
+        xx, yy = np.meshgrid(idx, idx)
+
+        x = xx.ravel()
+        y = yy.ravel()
+        recall_values = matrix_norm.ravel()
+
+        # Recall controls both marker size and colour
+        marker_sizes = 8 + 900 * recall_values
+
+        scatter = ax.scatter(x, y, s=marker_sizes, c=recall_values, cmap=cmap, norm=norm, edgecolors="0.7", linewidths=0.65, zorder=3)
+
+        ax.set_facecolor("white")
+        ax.set_axisbelow(True)
+        ax.grid(True, linewidth=0.8, alpha=0.28)
+
+        cbar = fig.colorbar(scatter, ax=ax, fraction=0.022, pad=0.045, aspect=40)
+        cbar.set_label("Recall", rotation=270, labelpad=18)
+        cbar.set_ticks(np.linspace(0, 1, 6))
+
+        ax.set_xlim(-0.5, n_classes - 0.5)
+        ax.set_ylim(n_classes - 0.5, -0.5)
+        ax.set_aspect("equal")
+
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+
+        ax.tick_params(axis="both", length=0)
+
+        x_rotation = 90
+        x_alignment = "right"
+
+    else:
+        raise ValueError("style must be 'heatmap' or 'scatter'.")
+
+    ax.set(xticks=np.arange(len(labels)), yticks=np.arange(len(labels)), xticklabels=target_names,
+           yticklabels=target_names, xlabel="Predicted Label", ylabel="True Label")
+    plt.setp(ax.get_xticklabels(), rotation=x_rotation, ha=x_alignment, rotation_mode="anchor")
+
+    if filename is not None:
+        try:
+            node_count = Path(filename).stem.split("_")[2]
+            title = f"Confusion Matrix (Exp. {node_count} Nodes)"
+        except IndexError:
+            title = "Confusion Matrix"
+    else:
+        title = "Confusion Matrix"
+
+    ax.set_title(title, fontsize=14, pad=15)
     fig.tight_layout()
 
-    # --- Save ---
     save_dir = Path(save_path)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # Auto-generate filename with timestamp to avoid overwriting
     if filename is None:
-        from datetime import datetime
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        filename = f"confusion_matrix_{timestamp}.png"
-    filepath = save_dir / filename
+        filename = f"confusion_matrix_{style}_{colour_map}_{timestamp}.png"
 
-    fig.savefig(filepath, dpi=300, bbox_inches='tight', facecolor='white')
+    filepath = save_dir / filename
+    fig.savefig(filepath, dpi=300, bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
     print(f"Saved confusion matrix to: {filepath}")
@@ -205,5 +242,7 @@ if __name__ == "__main__":
                           y_pred,
                           labels,
                           target_names,
+                          style="scatter",
+                          colour_map="red",
                           save_path="./Figures",
                           filename="confusion_matrix_"+checkpoint_path.name.split("_")[2])

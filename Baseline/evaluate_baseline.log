@@ -1,0 +1,25 @@
+🚨 Important: Remember to use `2>&1 | tee evaluate.log` to store the logs
+Preparing dataset for test split:   0%|                  | 0/10 [00:00<?, ?it/s]                                                                                Evaluating test split:   0%|[38;2;93;151;129m                             [0m| 0/12 [00:00<?, ?it/s][0m/Users/nour/Documents/PortfolioProjects/3D/.venv/lib/python3.12/site-packages/torch/utils/data/dataloader.py:759: UserWarning: 'pin_memory' argument is set as true but not supported on MPS now, device pinned memory won't be used.
+  super().__init__(loader)
+Evaluating test split:   8%|[38;2;93;151;129m█▊                   [0m| 1/12 [00:02<00:22,  2.00s/it][0mEvaluating test split:  17%|[38;2;93;151;129m███▌                 [0m| 2/12 [00:03<00:19,  1.99s/it][0mEvaluating test split:  25%|[38;2;93;151;129m█████▎               [0m| 3/12 [00:05<00:15,  1.75s/it][0mEvaluating test split:  33%|[38;2;93;151;129m███████              [0m| 4/12 [00:07<00:15,  1.93s/it][0mEvaluating test split:  42%|[38;2;93;151;129m████████▊            [0m| 5/12 [00:09<00:13,  1.99s/it][0mEvaluating test split:  50%|[38;2;93;151;129m██████████▌          [0m| 6/12 [00:11<00:11,  1.95s/it][0mEvaluating test split:  58%|[38;2;93;151;129m████████████▎        [0m| 7/12 [00:13<00:09,  1.84s/it][0mEvaluating test split:  67%|[38;2;93;151;129m██████████████       [0m| 8/12 [00:15<00:07,  1.86s/it][0mEvaluating test split:  75%|[38;2;93;151;129m███████████████▊     [0m| 9/12 [00:16<00:04,  1.61s/it][0mEvaluating test split:  83%|[38;2;93;151;129m████████████████▋   [0m| 10/12 [00:19<00:04,  2.01s/it][0mEvaluating test split:  92%|[38;2;93;151;129m██████████████████▎ [0m| 11/12 [00:21<00:02,  2.26s/it][0mEvaluating test split: 100%|[38;2;93;151;129m████████████████████[0m| 12/12 [00:22<00:00,  1.83s/it][0m                                                                                ==================================================
+Classification Report:
+              precision    recall  f1-score   support
+
+     bathtub       0.92      0.88      0.90        25
+         bed       0.98      0.88      0.93        93
+       chair       0.99      0.98      0.99       149
+        desk       0.91      0.66      0.76        44
+     dresser       0.72      0.82      0.77        44
+     monitor       0.99      0.99      0.99        85
+ night_stand       0.75      0.86      0.80        44
+        sofa       0.95      1.00      0.97       117
+       table       0.88      0.95      0.91        75
+      toilet       0.94      0.93      0.93        67
+
+    accuracy                           0.92       743
+   macro avg       0.90      0.89      0.89       743
+weighted avg       0.93      0.92      0.92       743
+
+
+==================================================
+Saved confusion matrix to: ../Figures/confusion_matrix_baseline.png
