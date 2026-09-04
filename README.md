@@ -17,7 +17,7 @@ The code contains an implementation of a simplified `PointNet` baseline and a cu
 
 
 # Data
-The official [ModelNet10 dataset](https://modelnet.cs.princeton.edu/) contains 10 classes of 3D objects: bathtub, bed, chair, desk, dresser, monitor, night stand, sofa, table, and toilet. 
+The official [ModelNet10 dataset](https://modelnet.cs.princeton.edu/) contains 10 classes of 3D objects: bathtub, bed, chair, desk, dresser, monitor, night stand, sofa, table, and toilet. Each class has a number of files showing CAD objects as [Object File Format `.off`](https://segeval.cs.princeton.edu/public/off_format.html).
 
 Out of the box, the dataset is divided into training and testing sets. However, the default splits are not evenly distributed across classes (see the right-hand figure below). To address this, I merged all shapes and re-stratified them into a balanced train/validation/test split of 80% / 5% / 15%. The left bar plot illustrates the updated distribution. Stratifying the data in this manner is a better practice than relying on the unbalanced default splits, as it prevents the model from disproportionately misrepresenting certain classes.
 
@@ -81,28 +81,13 @@ Additionally, the high performance can be partially attributed to the custom dat
 
 ----
 
-You can read the full article here:
+Notes:
+* You can read the full article here:
+* The dataset can be downloaded from the following link: https://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip
 
 -----
+
 # References
 
-- Wang, Y., Sun, Y., Liu, Z., Sarma, S. E., Bronstein, M. M., & Solomon, J. M. (2019). Dynamic Graph CNN for Learning on Point Clouds. *ACM Transactions on Graphics (TOG)*, 38(5), 1–12.
-
-Steps:
-- [ ] Download the data
-- [ ] Open the data files and plot the distributions to make sure classes are balanced.
-- [ ] Show a grid of 4x4 3D objects for each class
-- [ ] Cluster them using k-nearest neighbour (and make a visualisation of the 10 classes clustered with hovering feature where hovering over a datapoint shows a sample) —> the visualisation should be for the training split.
-- [ ] Build a simple classification model
-- [ ] Understand and explain the model’s predictions using SHAP
-- [ ] Reproduce a classification paper. Then compare it scientifically to the baseline above.
-- [ ] Build a simple wGAN model to generate 3D shapes.
-
-
-Download dataset at: https://3dvision.princeton.edu/projects/2014/3DShapeNets/ModelNet10.zip
-Read about the dataset and see code examples at: https://www.kaggle.com/datasets/balraj98/modelnet10-princeton-3d-object-dataset/data
-The dataset page:https://modelnet.cs.princeton.edu/
-The paper to cite about this dataset: https://3dvision.princeton.edu/projects/2014/3DShapeNets/paper.pdf
-
-
-Read about [Object File Format `.off`](https://segeval.cs.princeton.edu/public/off_format.html)# Point-Cloud-Classification
+- Wang, Y., Sun, Y., Liu, Z., Sarma, S.E., Bronstein, M.M. and Solomon, J.M., 2019. Dynamic graph cnn for learning on point clouds. ACM Transactions on Graphics (tog), 38(5), pp.1-12.
+- Wu, Z., Song, S., Khosla, A., Yu, F., Zhang, L., Tang, X. and Xiao, J., 2015. 3d shapenets: A deep representation for volumetric shapes. In Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 1912-1920).
